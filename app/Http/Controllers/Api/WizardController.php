@@ -31,8 +31,9 @@ class WizardController extends Controller
 
         try {
             $prompt = "
-            Actúa como un Arquitecto de Software Senior y Experto en Estimación de Proyectos.
-      
+            ROL:
+            Actúa como un Arquitecto de Soluciones de Software Senior y Project Manager con experiencia en estimación de costos basada en esfuerzo.
+            
             CONTEXTO DEL PROYECTO:
             -----------------------
             Descripción: \"{$description}\"
@@ -42,27 +43,45 @@ class WizardController extends Controller
             Tiempo Objetivo: " . ($data['timeline'] ?? 'N/A') . "
             
             TAREA:
-            Desglosa esta solicitud en una lista de 15 a 20 requerimientos técnicos funcionales de alto nivel necesarios para cumplir con los objetivos.
+            Desglosa la solicitud del usuario en una lista de 12 a 40 requerimientos funcionales de alto nivel para cumplir los objetivos. Debes estimar el esfuerzo en HORAS HOMBRE para cada ítem.
             
-            METODOLOGÍA:
-            Utiliza un desglose arquitectónico (ej: Frontend, Backend, Integraciones, Infraestructura, Marketing Digital si aplica).
+            METODOLOGÍA DE ESTIMACIÓN:
+            1. Analiza la complejidad técnica de cada requerimiento.
+            2. Asigna una cantidad de horas realista (Desarrollo + Pruebas unitarias).
+            3. Calcula el precio multiplicando las horas por la TASA BASE.
+            4. TASA BASE A UTILIZAR: {$hourlyRate} USD/hora. (Si no se especifica, usa $50 USD/h por defecto).
             
-            REGLAS DE FORMATO:
-            1. El \"text\" de cada requerimiento debe ser un BENEFICIO o ENTREGABLE TANGIBLE para el cliente.
-               - Malo: \"Base de datos SQL\"
-               - Bueno: \"Almacenamiento Seguro de Datos de Clientes\"
+            REGLAS DE FORMATO Y REDACCIÓN:
+            1. El \"text\" debe ser un BENEFICIO o ENTREGABLE TANGIBLE para el cliente (No uses jerga técnica oscura).
+               - Malo: \"Creación de endpoints API REST\"
+               - Bueno: \"Conexión segura para intercambio de datos\"
+               
+            2. ESTRUCTURA DEL DESGLOSE (Categorías sugeridas):
+               - Frontend / Experiencia de Usuario
+               - Backend / Lógica de Negocio
+               - Integraciones (APIs, Pagos, Terceros)
+               - Marketing / Contenidos (Solo si el usuario lo pidió)
             
-            2. PRECIOS:
-               - Estima utilizando TARIFAS ESTÁNDAR INTERNACIONALES (Base EE.UU/Global: $30-$60/hora).
-               - NO ajustes los precios a la baja por región (el sistema aplicará un multiplicador regional después).
-               - Rango típico por módulo: $100 - $1500 USD según complejidad.
-            
-            3. Importante: Si el usuario seleccionó servicios de Marketing o Diseño, incluye items relacionados (ej: \"Estrategia de Contenidos\", \"Diseño UI/UX Premium\").
-            
-            Responde SOLO con un JSON array válido. Formato exacto:
+            3. ÍTEMS OBLIGATORIOS (Deben ir AL FINAL de la lista):
+               Debes estimar las horas para estos ítems transversales basándote en el tamaño del proyecto (usualmente un % del total de desarrollo):
+               - \"QA - Aseguramiento de la Calidad y Pruebas\" (Aprox 15-20% del tiempo de dev)
+               - \"Infraestructura y Configuración DevOps\" (Configuración de servidores, CI/CD)
+               - \"Gestión de Proyecto y Comunicación\" (Reuniones, demos, seguimiento)
+               - \"Análisis Funcional y Documentación Técnica\"
+                  
+            SALIDA (JSON ARRAY):
+            Responde ÚNICAMENTE con un JSON array válido. No incluyas texto antes ni después.
+            Formato:
             [
-              { \"text\": \"Título del Beneficio/Entregable\", \"value\": 250, \"included\": true },
-              ...
+            { 
+                \"text\": \"Título del Entregable\", 
+                \"hours\": 10, 
+                \"rate\": 50, 
+                \"value\": 500, 
+                \"category\": \"Backend\",
+                \"included\": true 
+            },
+            ...
             ]
             ";
 
