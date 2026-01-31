@@ -27,6 +27,8 @@ class WizardController extends Controller
         ]);
 
         $description = $data['description'];
+        
+        // Use the hourlyRate provided by the Frontend (Single Source of Truth: geolocation.js)
         $hourlyRate = $data['location']['hourlyRate'] ?? 50;
 
         try {
