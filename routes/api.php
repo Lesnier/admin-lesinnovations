@@ -17,3 +17,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::post('/wizard/analyze', [App\Http\Controllers\Api\WizardController::class, 'analyze']);
+Route::post('/wizard/submit', [App\Http\Controllers\Api\WizardController::class, 'submit']);

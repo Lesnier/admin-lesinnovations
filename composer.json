@@ -10,6 +10,8 @@
         "laravel/framework": "^10.0",
         "laravel/sanctum": "^3.2",
         "laravel/tinker": "^2.8",
+        "openai-php/laravel": "*",
+        "revolution/laravel-google-sheets": "*",
         "tcg/voyager": "^1.7"
     },
     "require-dev": {
@@ -61,7 +63,8 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
-            "pestphp/pest-plugin": true
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
         }
     },
     "minimum-stability": "stable",
