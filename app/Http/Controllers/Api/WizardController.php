@@ -30,15 +30,28 @@ class WizardController extends Controller
         
         // 1. Resolve Settings from DB (Single Source of Truth)
         $countryCode = $data['location']['countryCode'] ?? 'DEFAULT';
+        
+        Log::info("Wizard Analysis Request", [
+            'country_provided' => $countryCode,
+            'description_length' => strlen($description)
+        ]);
+
         $setting = \App\Models\RegionalSetting::where('country_code', $countryCode)->first();
         
         if (!$setting) {
+             Log::info("Country code {$countryCode} not found in DB. Falling back to DEFAULT.");
              $setting = \App\Models\RegionalSetting::where('country_code', 'DEFAULT')->first();
         }
 
         // Fallback hardcoded if DB is empty
         $hourlyRate = $setting ? $setting->hourly_rate : 50;
         $multiplier = $setting ? $setting->multiplier : 1.1;
+
+        Log::info("Regional Setting Resolved", [
+            'country' => $setting ? $setting->country_name : 'Unknown',
+            'hourly_rate' => $hourlyRate,
+            'multiplier' => $multiplier
+        ]);
 
         try {
             $prompt = "
@@ -116,16 +129,29 @@ class WizardController extends Controller
             $jsonString = substr($content, $jsonStart, $jsonEnd - $jsonStart + 1);
             $items = json_decode($jsonString, true);
 
+            Log::info("OpenAI Response Received", ['item_count' => count($items)]);
+
             // 2. Apply Regional Multiplier logic (Backend side)
             $finalItems = collect($items)->map(function($item) use ($multiplier) {
                 // Ensure base properties exist
                 $baseValue = $item['value'] ?? 0;
                 // Apply multiplier to value
+                $originalValue = $baseValue;
                 $item['value'] = round($baseValue * $multiplier, 2);
+                
                 // Attach metadata so frontend knows what happened (optional)
                 $item['_multiplier_applied'] = $multiplier;
+
+                // Log sample (only first item to avoid spam)
+                // Log::debug("Applying Multiplier", ['txt'=>$item['text'], 'base'=>$originalValue, 'final'=>$item['value']]);
+                
                 return $item;
             });
+
+            Log::info("Analysis Completed Successfully", [
+                'final_total_base' => collect($items)->sum('value'),
+                'final_total_adjusted' => $finalItems->sum('value') 
+            ]);
             
             return response()->json($finalItems);
 
