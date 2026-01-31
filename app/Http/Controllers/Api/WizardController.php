@@ -28,8 +28,17 @@ class WizardController extends Controller
 
         $description = $data['description'];
         
-        // Use the hourlyRate provided by the Frontend (Single Source of Truth: geolocation.js)
-        $hourlyRate = $data['location']['hourlyRate'] ?? 50;
+        // 1. Resolve Settings from DB (Single Source of Truth)
+        $countryCode = $data['location']['countryCode'] ?? 'DEFAULT';
+        $setting = \App\Models\RegionalSetting::where('country_code', $countryCode)->first();
+        
+        if (!$setting) {
+             $setting = \App\Models\RegionalSetting::where('country_code', 'DEFAULT')->first();
+        }
+
+        // Fallback hardcoded if DB is empty
+        $hourlyRate = $setting ? $setting->hourly_rate : 50;
+        $multiplier = $setting ? $setting->multiplier : 1.1;
 
         try {
             $prompt = "
@@ -105,8 +114,20 @@ class WizardController extends Controller
             }
             
             $jsonString = substr($content, $jsonStart, $jsonEnd - $jsonStart + 1);
+            $items = json_decode($jsonString, true);
+
+            // 2. Apply Regional Multiplier logic (Backend side)
+            $finalItems = collect($items)->map(function($item) use ($multiplier) {
+                // Ensure base properties exist
+                $baseValue = $item['value'] ?? 0;
+                // Apply multiplier to value
+                $item['value'] = round($baseValue * $multiplier, 2);
+                // Attach metadata so frontend knows what happened (optional)
+                $item['_multiplier_applied'] = $multiplier;
+                return $item;
+            });
             
-            return response()->json(json_decode($jsonString));
+            return response()->json($finalItems);
 
         } catch (\Exception $e) {
             Log::error("OpenAI Error: " . $e->getMessage());
