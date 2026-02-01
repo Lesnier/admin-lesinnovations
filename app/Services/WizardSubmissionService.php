@@ -286,7 +286,7 @@ class WizardSubmissionService
                 'Requirements' => $reqText
             ];
 
-            Sheets::spreadsheet($sheetId)->sheetByIndex(0)->append([$rowData]);
+            Sheets::spreadsheet($this->sheetId)->sheetByIndex(0)->append([$rowData]);
             Log::info("WizardSubmission: Sheets Sync Successful");
 
         } catch (\Exception $e) {

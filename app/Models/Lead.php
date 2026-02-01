@@ -10,7 +10,7 @@ class Lead extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'data' => 'array',
+        'data' => 'string',
         'total_estimate' => 'decimal:2',
     ];
 }
