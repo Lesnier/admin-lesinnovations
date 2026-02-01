@@ -59,7 +59,9 @@ jobs:
           if_key_exists: replace
 
       - name: Adding Known Hosts
-        run: ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p ${{ secrets.SERVER_PORT || 22 }} -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy with rsync
         # Exclude storage, .env, and git folder to preserve server state/secrets
