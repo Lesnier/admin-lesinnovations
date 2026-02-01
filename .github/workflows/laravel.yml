@@ -65,7 +65,8 @@ jobs:
 
       - name: Deploy with rsync
         # Exclude storage, .env, and git folder to preserve server state/secrets
-        run: rsync -avz --delete --exclude='.git' --exclude='.github' --exclude='.env' --exclude='storage' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/keywordcv/lesinnovations.tech/server/
+        # Added -e "ssh -v" for debugging authentication issues
+        run: rsync -avz --delete -e "ssh -v" --exclude='.git' --exclude='.github' --exclude='.env' --exclude='storage' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/keywordcv/lesinnovations.tech/server/
 
       - name: Post-deployment commands
         uses: appleboy/ssh-action@master
