@@ -165,68 +165,16 @@ class WizardController extends Controller
 
     /**
      * Process Wizard Submission (Save Lead, Sync GHL, Sync Sheets)
+     * All logic delegated to WizardSubmissionService.
      */
-    public function submit(Request $request, \App\Services\GoHighLevelService $ghlService) 
+    public function submit(Request $request, \App\Services\WizardSubmissionService $submissionService) 
     {
-        $data = $request->all();
-        $contact = $data['contact'] ?? [];
-        $objectives = $data['objectives'] ?? [];
-        // Requirements might contain _multiplier_applied, but GHL service just logs text/value.
-        $requirements = $data['requirements'] ?? []; 
-        $totalEstimate = $data['totalEstimate'] ?? 0;
+        $result = $submissionService->process($request->all());
 
-        try {
-            // 1. Save Local Lead
-            $lead = Lead::updateOrCreate(
-                ['email' => $contact['email'] ?? null],
-                [
-                    'name' => $contact['fullName'] ?? null,
-                    'phone' => $contact['phone'] ?? null,
-                    'company' => $contact['companyName'] ?? null,
-                    'total_estimate' => $totalEstimate,
-                    'data' => json_encode($data) // Save full payload (Encoded as User requested string cast)
-                ]
-            );
-
-            // 2. Sync GoHighLevel (Using Service)
-            $ghlService->sync($contact, $objectives, $requirements, $totalEstimate, $data['description'] ?? '');
-
-            // 3. Sync Google Sheets
-            $this->syncGoogleSheets($contact, $objectives, $requirements, $totalEstimate, $data['description'] ?? '');
-
-            return response()->json(['success' => true]);
-
-        } catch (\Exception $e) {
-            Log::error("Submission Error: " . $e->getMessage());
-            return response()->json(['success' => true, 'warning' => 'Partial failure'], 200);
-        }
-    }
-
-    private function syncGoogleSheets($contact, $objectives, $requirements, $totalEstimate, $description)
-    {
-        $sheetId = env('GOOGLE_SHEET_ID');
-        if (!$sheetId) return;
-
-        try {
-            $rowData = [
-                'Date' => now()->toIso8601String(),
-                'Name' => $contact['fullName'],
-                'Email' => $contact['email'],
-                'Phone' => $contact['phone'],
-                'Company' => $contact['companyName'],
-                'Estimate' => $totalEstimate,
-                'Service' => implode(', ', $objectives['services'] ?? []),
-                'Goals' => implode(', ', $objectives['goals'] ?? []),
-                'Budget' => $objectives['budget'] ?? '',
-                'Timeline' => $objectives['timeline'] ?? '',
-                'Description' => $description,
-                'Requirements' => collect($requirements)->map(fn($r) => "{$r['text']} (\${$r['value']})")->implode("\n")
-            ];
-
-            Sheets::spreadsheet($sheetId)->sheetByIndex(0)->append([$rowData]);
-
-        } catch (\Exception $e) {
-            Log::error("Sheets Sync Error: " . $e->getMessage());
+        if ($result['success']) {
+             return response()->json(['success' => true]);
+        } else {
+             return response()->json(['success' => false, 'error' => $result['error'] ?? 'Unknown error'], 500);
         }
     }
 }
