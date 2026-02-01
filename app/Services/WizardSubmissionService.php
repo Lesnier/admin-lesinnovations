@@ -11,6 +11,7 @@ class WizardSubmissionService
     protected $apiKey;
     protected $locationId;
     protected $pipelineId;
+    protected $sheetId;
     protected $baseUrl = 'https://services.leadconnectorhq.com';
 
     public function __construct()
@@ -18,6 +19,7 @@ class WizardSubmissionService
         $this->apiKey = trim(env('GHL_API_KEY'));
         $this->locationId = trim(env('GHL_LOCATION_ID'));
         $this->pipelineId = trim(env('GHL_PIPELINE_ID'));
+        $this->sheetId = env('GOOGLE_SHEET_ID');
     }
 
     /**
@@ -254,8 +256,12 @@ class WizardSubmissionService
 
     protected function syncGoogleSheets($contact, $objectives, $requirements, $totalEstimate, $description)
     {
-        $sheetId = env('GOOGLE_SHEET_ID');
-        if (!$sheetId) {
+        // Lazy load
+        if (!$this->sheetId) {
+            $this->sheetId = env('GOOGLE_SHEET_ID');
+        }
+
+        if (!$this->sheetId) {
             Log::warning("GOOGLE_SHEET_ID missing. Skipping Sheets sync.");
             return;
         }
