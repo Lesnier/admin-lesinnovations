@@ -51,20 +51,30 @@ jobs:
       - name: Install Dependencies
         run: composer install --no-dev --optimize-autoloader --no-interaction
 
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
-          if_key_exists: replace
-
-      - name: Adding Known Hosts
+      - name: Setup SSH Agent
+        env:
+          SSH_PASS: ${{ secrets.SSH_PASSPHRASE }}
         run: |
           mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Start ssh-agent
+          eval $(ssh-agent -s)
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+          
+          # Use SSH_ASKPASS to feed the passphrase
+          echo 'echo "$SSH_PASS"' > ~/.ssh/askpass
+          chmod +x ~/.ssh/askpass
+          export SSH_ASKPASS=~/.ssh/askpass
+          export DISPLAY=:0
+          
+          ssh-add ~/.ssh/id_rsa
+          
+      - name: Adding Known Hosts
+        run: |
           ssh-keyscan -p ${{ secrets.SERVER_PORT || 22 }} -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-          echo "Checking loaded keys in agent:"
-          ssh-add -L || echo "No keys loaded or agent not running"
 
       - name: Deploy with rsync
         # Exclude storage, .env, and git folder to preserve server state/secrets
