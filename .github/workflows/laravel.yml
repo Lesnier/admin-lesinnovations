@@ -77,8 +77,8 @@ jobs:
           ssh-keyscan -p ${{ secrets.SERVER_PORT || 22 }} -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy with rsync
-        # Exclude storage, .env, and git folder to preserve server state/secrets
-        run: rsync -avz --delete -e "ssh -v" --exclude='.git' --exclude='.github' --exclude='.env' --exclude='storage' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/keywordcv/lesinnovations.tech/server/
+        # Exclude all storage, .env, and git folder to preserve server state/secrets
+        run: rsync -avz --delete -e "ssh -v" --exclude='.git' --exclude='.github' --exclude='.env' --exclude='storage' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/keywordcv/admin.lesinnovations.tech/
 
       - name: Post-deployment commands
         uses: appleboy/ssh-action@master
@@ -88,7 +88,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            cd /home/keywordcv/lesinnovations.tech/server/
+            cd /home/keywordcv/admin.lesinnovations.tech/
             # Ensure storage exists and has permissions if not synced
             mkdir -p storage/framework/{sessions,views,cache} storage/logs
             chmod -R 775 storage bootstrap/cache
