@@ -55,6 +55,7 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
           if_key_exists: replace
 
@@ -65,8 +66,7 @@ jobs:
 
       - name: Deploy with rsync
         # Exclude storage, .env, and git folder to preserve server state/secrets
-        # Added -e "ssh -v" for debugging authentication issues
-        run: rsync -avz --delete -e "ssh -v" --exclude='.git' --exclude='.github' --exclude='.env' --exclude='storage' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/keywordcv/lesinnovations.tech/server/
+        run: rsync -avz --delete --exclude='.git' --exclude='.github' --exclude='.env' --exclude='storage' ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/keywordcv/lesinnovations.tech/server/
 
       - name: Post-deployment commands
         uses: appleboy/ssh-action@master
@@ -74,6 +74,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
             cd /home/keywordcv/lesinnovations.tech/server/
             # Ensure storage exists and has permissions if not synced
