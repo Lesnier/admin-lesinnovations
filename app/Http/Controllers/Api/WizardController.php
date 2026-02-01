@@ -166,12 +166,13 @@ class WizardController extends Controller
     /**
      * Process Wizard Submission (Save Lead, Sync GHL, Sync Sheets)
      */
-    public function submit(Request $request) 
+    public function submit(Request $request, \App\Services\GoHighLevelService $ghlService) 
     {
         $data = $request->all();
         $contact = $data['contact'] ?? [];
         $objectives = $data['objectives'] ?? [];
-        $requirements = $data['requirements'] ?? [];
+        // Requirements might contain _multiplier_applied, but GHL service just logs text/value.
+        $requirements = $data['requirements'] ?? []; 
         $totalEstimate = $data['totalEstimate'] ?? 0;
 
         try {
@@ -183,12 +184,12 @@ class WizardController extends Controller
                     'phone' => $contact['phone'] ?? null,
                     'company' => $contact['companyName'] ?? null,
                     'total_estimate' => $totalEstimate,
-                    'data' => $data // Save full payload
+                    'data' => json_encode($data) // Save full payload (Encoded as User requested string cast)
                 ]
             );
 
-            // 2. Sync GoHighLevel
-            $this->syncGoHighLevel($contact, $objectives, $requirements, $totalEstimate, $data['description'] ?? '');
+            // 2. Sync GoHighLevel (Using Service)
+            $ghlService->sync($contact, $objectives, $requirements, $totalEstimate, $data['description'] ?? '');
 
             // 3. Sync Google Sheets
             $this->syncGoogleSheets($contact, $objectives, $requirements, $totalEstimate, $data['description'] ?? '');
@@ -198,94 +199,6 @@ class WizardController extends Controller
         } catch (\Exception $e) {
             Log::error("Submission Error: " . $e->getMessage());
             return response()->json(['success' => true, 'warning' => 'Partial failure'], 200);
-        }
-    }
-
-    private function syncGoHighLevel($contact, $objectives, $requirements, $totalEstimate, $description)
-    {
-        $apiKey = env('GHL_API_KEY');
-        if (!$apiKey) return;
-
-        $locationId = env('GHL_LOCATION_ID');
-
-        try {
-            // Search Contact
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Version' => '2021-07-28'
-            ])->get('https://services.leadconnectorhq.com/contacts/', [
-                'locationId' => $locationId,
-                'query' => $contact['email']
-            ]);
-
-            $contactId = null;
-
-            if ($response->successful() && count($response->json()['contacts'] ?? []) > 0) {
-                $contactId = $response->json()['contacts'][0]['id'];
-            } else {
-                // Create Contact
-                $createResp = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Version' => '2021-07-28'
-                ])->post('https://services.leadconnectorhq.com/contacts/', [
-                    'email' => $contact['email'],
-                    'phone' => $contact['phone'],
-                    'firstName' => explode(' ', $contact['fullName'])[0],
-                    'lastName' => implode(' ', array_slice(explode(' ', $contact['fullName']), 1)),
-                    'name' => $contact['fullName'],
-                    'companyName' => $contact['companyName'],
-                    'locationId' => $locationId,
-                    'tags' => ["wizard-est", "website-lead"]
-                ]);
-                
-                if ($createResp->successful()) {
-                    $contactId = $createResp->json()['contact']['id'];
-                }
-            }
-
-            if ($contactId) {
-                // Create Opportunity
-                $pipelineId = env('GHL_PIPELINE_ID');
-                if ($pipelineId) {
-                    // Logic to find stage simplified for MVP - hardcoded or first stage
-                    // Ideally fetch stages like in original code
-                    
-                    Http::withHeaders([
-                        'Authorization' => 'Bearer ' . $apiKey,
-                        'Version' => '2021-07-28'
-                    ])->post('https://services.leadconnectorhq.com/opportunities/', [
-                        'pipelineId' => $pipelineId,
-                        'locationId' => $locationId,
-                        'contactId' => $contactId,
-                        'name' => $contact['fullName'] . ' - Lead',
-                        'status' => 'open',
-                        'monetaryValue' => $totalEstimate
-                    ]);
-                }
-
-                // Create Note
-                $noteBody = "Resultados del Wizard:\n---------------------\n";
-                $noteBody .= "Servicios: " . implode(', ', $objectives['services'] ?? []) . "\n";
-                $noteBody .= "Objetivos: " . implode(', ', $objectives['goals'] ?? []) . "\n";
-                $noteBody .= "Presupuesto: " . ($objectives['budget'] ?? 'N/A') . "\n";
-                $noteBody .= "Tiempo: " . ($objectives['timeline'] ?? 'N/A') . "\n\n";
-                $noteBody .= "Descripción:\n" . ($description ?? 'N/A') . "\n\n";
-                $noteBody .= "Requerimientos:\n";
-                foreach (($requirements ?? []) as $req) {
-                    $noteBody .= "- {$req['text']}: \${$req['value']}\n";
-                }
-                $noteBody .= "\nTotal Estimado: \${$totalEstimate}";
-
-                Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Version' => '2021-07-28'
-                ])->post("https://services.leadconnectorhq.com/contacts/{$contactId}/notes", [
-                    'body' => $noteBody
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            Log::error("GHL Sync Error: " . $e->getMessage());
         }
     }
 
