@@ -65,13 +65,20 @@ class WizardSubmissionService
 
     protected function syncGoHighLevel($contact, $objectives, $requirements, $totalEstimate, $description)
     {
+        // Lazy load config if constructor missed it
         if (!$this->apiKey) {
-            Log::warning("GHL_API_KEY is missing. Skipping GHL Sync.");
+            $this->apiKey = trim(env('GHL_API_KEY'));
+            $this->locationId = trim(env('GHL_LOCATION_ID'));
+            $this->pipelineId = trim(env('GHL_PIPELINE_ID'));
+        }
+
+        if (!$this->apiKey) {
+            Log::warning("GHL_API_KEY is missing (even after retry). Skipping GHL Sync.");
             return;
         }
 
         try {
-            // 1. Get or Create Contact
+            // 1. Get or Create Contact (Now ensures Tags are updated)
             $contactId = $this->getOrCreateContact($contact);
             
             if (!$contactId) {
@@ -96,21 +103,8 @@ class WizardSubmissionService
 
     protected function getOrCreateContact($contact)
     {
-        // 1. Search
-        $response = \Illuminate\Support\Facades\Http::withHeaders($this->getHeaders())->get($this->baseUrl . '/contacts/', [
-            'locationId' => $this->locationId,
-            'query' => $contact['email']
-        ]);
-
-        if ($response->successful() && count($response->json()['contacts'] ?? []) > 0) {
-            $id = $response->json()['contacts'][0]['id'];
-            Log::info("GHL: Contact Found", ['id' => $id]);
-            return $id;
-        }
-
-        // 2. Create
-        Log::info("GHL: Creating New Contact...");
-        $payload = [
+        // Common payload for Create and Update
+        $dataPayload = [
             'email' => $contact['email'],
             'phone' => $contact['phone'] ?? null,
             'name' => $contact['fullName'],
@@ -120,10 +114,32 @@ class WizardSubmissionService
         ];
         
         $parts = explode(' ', $contact['fullName']);
-        $payload['firstName'] = $parts[0] ?? '';
-        $payload['lastName'] = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '';
+        $dataPayload['firstName'] = $parts[0] ?? '';
+        $dataPayload['lastName'] = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : '';
 
-        $createResp = \Illuminate\Support\Facades\Http::withHeaders($this->getHeaders())->post($this->baseUrl . '/contacts/', $payload);
+        // 1. Search
+        $response = \Illuminate\Support\Facades\Http::withHeaders($this->getHeaders())->get($this->baseUrl . '/contacts/', [
+            'locationId' => $this->locationId,
+            'query' => $contact['email']
+        ]);
+
+        if ($response->successful() && count($response->json()['contacts'] ?? []) > 0) {
+            $id = $response->json()['contacts'][0]['id'];
+            Log::info("GHL: Contact Found (ID: $id). Updating tags/info...");
+            
+            // UPDATE existing contact to ensure Tags are applied
+            $updateResp = \Illuminate\Support\Facades\Http::withHeaders($this->getHeaders())->put($this->baseUrl . "/contacts/{$id}", $dataPayload);
+            
+            if (!$updateResp->successful()) {
+                Log::warning("GHL: Failed to update existing contact: " . $updateResp->body());
+            }
+            
+            return $id;
+        }
+
+        // 2. Create
+        Log::info("GHL: Creating New Contact...");
+        $createResp = \Illuminate\Support\Facades\Http::withHeaders($this->getHeaders())->post($this->baseUrl . '/contacts/', $dataPayload);
 
         if ($createResp->successful()) {
             $id = $createResp->json()['contact']['id'];
