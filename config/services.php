@@ -31,4 +31,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'ghl' => [
+        'api_key' => env('GHL_API_KEY'),
+        'location_id' => env('GHL_LOCATION_ID'),
+        'pipeline_id' => env('GHL_PIPELINE_ID'),
+    ],
+
+    'google_sheets' => [
+        'sheet_id' => env('GOOGLE_SHEET_ID'),
+    ],
+
 ];

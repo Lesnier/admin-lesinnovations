@@ -16,10 +16,10 @@ class WizardSubmissionService
 
     public function __construct()
     {
-        $this->apiKey = trim(env('GHL_API_KEY'));
-        $this->locationId = trim(env('GHL_LOCATION_ID'));
-        $this->pipelineId = trim(env('GHL_PIPELINE_ID'));
-        $this->sheetId = env('GOOGLE_SHEET_ID');
+        $this->apiKey = config('services.ghl.api_key');
+        $this->locationId = config('services.ghl.location_id');
+        $this->pipelineId = config('services.ghl.pipeline_id');
+        $this->sheetId = config('services.google_sheets.sheet_id');
     }
 
     /**
@@ -69,9 +69,9 @@ class WizardSubmissionService
     {
         // Lazy load config if constructor missed it
         if (!$this->apiKey) {
-            $this->apiKey = trim(env('GHL_API_KEY'));
-            $this->locationId = trim(env('GHL_LOCATION_ID'));
-            $this->pipelineId = trim(env('GHL_PIPELINE_ID'));
+            $this->apiKey = config('services.ghl.api_key');
+            $this->locationId = config('services.ghl.location_id');
+            $this->pipelineId = config('services.ghl.pipeline_id');
         }
 
         if (!$this->apiKey) {
@@ -258,7 +258,7 @@ class WizardSubmissionService
     {
         // Lazy load
         if (!$this->sheetId) {
-            $this->sheetId = env('GOOGLE_SHEET_ID');
+            $this->sheetId = config('services.google_sheets.sheet_id');
         }
 
         if (!$this->sheetId) {
