@@ -97,3 +97,8 @@ jobs:
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
+            
+            # Create storage symlink only if storage/app/public exists
+            if [ -d "storage/app/public" ]; then
+                php artisan storage:link
+            fi
