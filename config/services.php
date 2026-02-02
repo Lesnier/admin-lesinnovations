@@ -39,6 +39,8 @@ return [
 
     'google_sheets' => [
         'sheet_id' => env('GOOGLE_SHEET_ID'),
+        'service_account_email' => env('GOOGLE_SERVICE_ACCOUNT_EMAIL'),
+        'private_key' => env('GOOGLE_PRIVATE_KEY'),
     ],
 
 ];
